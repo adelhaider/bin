@@ -1,0 +1,28 @@
+#!/bin/bash
+
+#((!$#)) && echo "usage: git-log <oneline>" && exit 1
+
+#if git rev-parse --git-dir > /dev/null 2>&1; then
+if [ -d .git ]; then :
+    # This is a valid git repository (but the current working
+    # directory may not be the top level.
+    # Check the output of the git rev-parse command if you care)
+    if [ $1 = "one-line" ]; then :
+      git log --pretty=format:"%h%x09%an%x09%ad%x09%s"
+    elif [ $1 = "graph1" ]; then :
+      git log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all
+    elif [ $1 = "graph2" ]; then :
+      git log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n'' %C(white)%s%C(reset) %C(dim white)- %an%C(reset)' --all
+    elif [ $1 = "show-files" ]; then :
+      git log
+    elif [ empty $1 ]; then :
+      git log
+    else
+      echo "$1 not recognized. Please choose on of the following: one-line | graph1 | graph2 | show-files or leave empty"
+    fi
+else :
+  # this is not a git repository
+  echo "Current directory is not a valid git repo or you're not at the top level root directory of the repo."
+fi
+
+#http://stackoverflow.com/questions/4298960/git-add-a-git-commit-in-one-command

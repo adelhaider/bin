@@ -1,0 +1,99 @@
+#!/bin/bash
+
+set -o errexit
+
+username="adel.haider@yodel.co.uk"
+password="Ydlflt012"
+server="mydesktop.myhdnl.co.uk/SSL-Informentum"
+script="/etc/vpnc/vpnc-script-yodel"
+
+pidfile="/tmp/vpn-yodel.pid"
+logfile="/var/log/vpn-yodel.log"
+
+usage ()
+{
+    echo "Usage: vpn-yodel <connect|disconnect|reconnect|status>" 1>&2
+}
+
+status ()
+{
+  pid=$(pgrep openconnect | tail -n 1)
+
+  if [ ! -s "$pidfile" ]; then
+    touch $pidfile
+  fi
+
+  vpn_pid=$(cat $pidfile)
+  if [ ! $pid ]; then
+    echo "Openconnect is not running."
+  elif [ $pid == $vpn_pid ]; then
+     echo "Openconnect is running with pid $pid"
+     exit 0
+  else
+    echo "An unknown instance of Openconnect is running with pid $pid"
+    exit 0
+  fi
+}
+
+connect ()
+{
+  # First check if a previous vpn instance is not running
+  echo "Checking vpn connection status..."
+  # sudo rm -f "$pidfile"
+  status
+
+  # Connect to Yodel (Infomentum) VPN using openconnect (which supports Cisco AnyConnect protocol)
+  echo "Connecting now..."
+  #echo "$password" | sudo openconnect -b --script=$script --user=$username --pid-file=$pidfile --passwd-on-stdin $server &> $logfile
+  echo "$password" | sudo openconnect -b --script=$script --user=$username --pid-file=$pidfile --passwd-on-stdin $server
+
+  if [ ! -s "$pidfile" ]; then
+      echo "ERROR: openconnect did not start successfully" 1>&2
+      cat $logfile 1>&2
+      # sudo rm -f "$pidfile"
+      exit 1
+  else
+      echo "Openconnect successfully started."
+  fi
+}
+
+### Disconnect from the vpn server, or do not do anything if no vpn server has been started yet.
+disconnect ()
+{
+  if [ ! -f "$pidfile" ]; then
+    echo "Nothing to disconnect"
+  else
+    pid="$(cat $pidfile)"
+    sudo kill $pid
+    echo "Disconnected"
+    # sudo rm -f "$pidfile"
+  fi
+}
+
+reconnect ()
+{
+  disconnect
+  connect
+}
+
+case "$1" in
+  status)
+      status
+      exit 0
+      ;;
+  connect)
+      connect
+      exit 0
+      ;;
+  disconnect)
+      disconnect
+      exit 0
+      ;;
+  reconnect)
+      reconnect
+      exit 0
+      ;;
+  *)
+      usage
+      exit 0
+esac

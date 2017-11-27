@@ -1,0 +1,21 @@
+POST https://mydesktop.myhdnl.co.uk/SSL-Informentum
+Attempting to connect to server 89.187.121.85:443
+SSL negotiation with mydesktop.myhdnl.co.uk
+Connected to HTTPS on mydesktop.myhdnl.co.uk
+Got HTTP response: HTTP/1.0 302 Temporary moved
+GET https://mydesktop.myhdnl.co.uk/SSL-Informentum
+Attempting to connect to server 89.187.121.85:443
+SSL negotiation with mydesktop.myhdnl.co.uk
+Connected to HTTPS on mydesktop.myhdnl.co.uk
+Got HTTP response: HTTP/1.0 302 Temporary moved
+GET https://mydesktop.myhdnl.co.uk/+webvpn+/index.html
+SSL negotiation with mydesktop.myhdnl.co.uk
+Connected to HTTPS on mydesktop.myhdnl.co.uk
+Please enter your username and password.
+POST https://mydesktop.myhdnl.co.uk/+webvpn+/index.html
+Got CONNECT response: HTTP/1.1 200 OK
+CSTP connected. DPD 30, Keepalive 20
+RTNETLINK answers: File exists
+Connected tun0 as 10.51.223.93, using SSL
+Continuing in background; pid 22527
+Established DTLS connection (using GnuTLS). Ciphersuite (DTLS0.9)-(RSA)-(AES-128-CBC)-(SHA1).

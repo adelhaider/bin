@@ -1,0 +1,19 @@
+#!/bin/bash
+
+((!$#)) && echo "usage: git-commit-merge <from-branch-name>" && exit 1
+
+#if git rev-parse --git-dir > /dev/null 2>&1; then
+if [ -d .git ]; then :
+    # This is a valid git repository (but the current working
+    # directory may not be the top level.
+    # Check the output of the git rev-parse command if you care)
+    from_branch=$1
+    to_branch=$(git rev-parse --abbrev-ref HEAD)
+    echo "Committing merge from $from_branch to current branch ($to_branch)"
+    git commit -m "Merged from $from_branch to $to_branch."
+else :
+  # this is not a git repository
+  echo "Current directory is not a valid git repo or you're not at the top level root directory of the repo."
+fi
+
+#http://stackoverflow.com/questions/4298960/git-add-a-git-commit-in-one-command

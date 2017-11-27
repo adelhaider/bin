@@ -1,0 +1,88 @@
+<XmlRules>
+  <Description>Spectrum OSB code quality rules v1.0</Description>
+  <NamespaceContext>
+    <Xmlns prefix="ser" namespace="http://www.bea.com/wli/sb/services" />
+    <Xmlns prefix="tran" namespace="http://www.bea.com/wli/sb/transports" />
+    <Xmlns prefix="env" namespace="http://www.bea.com/wli/config/env" />
+    <Xmlns prefix="fn" namespace="http://www.w3.org/2005/xpath-functions" />
+    <Xmlns prefix="xsd" namespace="http://www.w3.org/2001/XMLSchema" />
+    <Xmlns prefix="wsdl" namespace="http://schemas.xmlsoap.org/wsdl/" />
+    <Xmlns prefix="soap11" namespace="http://schemas.xmlsoap.org/wsdl/soap/" />
+    <Xmlns prefix="mvn" namespace="http://maven.apache.org/POM/4.0.0" />
+  </NamespaceContext>
+  <FileTypes>
+    <FileType name="MavenPOM">
+      <Rule name="PomParent" filter="/mvn:project/mvn:artifactId/text() != 'Parent_OSB_Maven_config'" severity="critical" type="xpathBoolean" errorMessage="OSB project POM files are required to have Spectrum_OSB:Parent_OSB_Maven_config as their parent">
+        /mvn:project/mvn:parent/mvn:groupId = 'Spectrum_OSB' and /mvn:project/mvn:parent/mvn:artifactId = 'Parent_OSB_Maven_config'
+      </Rule>
+      <Rule name="ArtifactIdPattern" filter="true()" severity="critical" type="xpathBoolean" errorMessage="Version tag does not match the expected pattern: X.Y.Z[-SNAPSHOT] e.g. 1.0.4 or 0.6.1-SNAPSHOT">
+        matches(/mvn:project/mvn:version, '^[0-9]+[.][0-9]+[.][0-9]+([-][S][N][A][P][S][H][O][T])?')
+      </Rule>
+      <Rule name="ArtifactGroupId" filter="/mvn:project/mvn:artifactId != 'Parent_OSB_Maven_config'" severity="critical" type="groovy">
+        def artifactId = evalStringXPath("/mvn:project/mvn:groupId")
+        def errors = []
+        if (artifactId.equals("")) errors.add("OSB project's Maven group not found")
+        if (!serviceGroups.contains(artifactId)) errors.add("OSB project's Maven group identifier (${artifactId}) is not a registered one")
+        return errors
+      </Rule>
+    </FileType>
+    <FileType name="XSD">
+      <Rule name="GardenOfEden_OneRootElementForEachRootType"
+          filter="/xsd:schema/@targetNamespace = 'http://schemas.yodel.co.uk/cdm/v1'"
+          severity="warning"
+          type="xpathNodes"
+          errorMessage="There are elements that don't correspond to a complex type">
+        for $elem in /xsd:schema/xsd:element
+          return if (substring-after($elem/@type, ':') != concat($elem/@name, 'Type') or not(/xsd:schema/xsd:complexType[concat($elem/@name, 'Type') = @name]))
+            then $elem/@name
+            else ()
+      </Rule>
+      <Rule name="GardenOfEden_OneRootTypeForEachRootElement" filter="/xsd:schema/@targetNamespace = 'http://schemas.yodel.co.uk/cdm/v1'" severity="warning" type="xpathNodes" errorMessage="There are complex types that don't have their corresponding element defined">
+        for $ctype in /xsd:schema/xsd:complexType
+          return if (not(/xsd:schema/xsd:element[concat(@name, 'Type') = $ctype/@name]))
+            then $ctype/@name
+            else ()
+      </Rule>
+      <Rule name="UpperCamelCaseElements" filter="starts-with(/xsd:schema/@targetNamespace, 'http://services.yodel.co.uk') or starts-with(/xsd:schema/@targetNamespace, 'http://schemas.yodel.co.uk')" severity="error" type="xpathNodes" errorMessage="There are elements with non-UCC names">
+        for $elem in //xsd:element
+          return if (matches($elem/@name, '^[a-z][a-zA-Z]'))
+            then $elem/@name
+            else ()
+      </Rule>
+      <Rule name="UpperCamelCaseTypes" filter="starts-with(/xsd:schema/@targetNamespace, 'http://services.yodel.co.uk') or starts-with(/xsd:schema/@targetNamespace, 'http://schemas.yodel.co.uk')" severity="warning" type="xpathNodes" errorMessage="There are complex types with non-UCC names">
+        for $ctype in /xsd:schema/xsd:complexType
+          return if (matches($ctype/@name, '^[a-z][a-zA-Z]'))
+            then $ctype/@name
+            else ()
+      </Rule>
+      <Rule name="LowerCamelCaseAttributes" filter="not(starts-with(/xsd:schema/@targetNamespace, 'http://xmlns.oracle.com/pcbpel/adapter/db/top'))" severity="warning" type="xpathNodes" errorMessage="There are attributes with non-LCC names">
+        for $attr in //xsd:attribute
+          return if (matches($attr/@name, '^[A-Z][a-zA-Z]'))
+            then $attr/@name
+            else ()
+      </Rule>
+    </FileType>
+    <FileType name="WSDL">
+      <Rule name="MessageNames" filter="starts-with(/wsdl:definitions/@targetNamespace, 'http://services.yodel.co.uk/')" severity="warning" type="xpathNodes" errorMessage="Message names do not match that of the operation they are used for">
+        /wsdl:definitions/wsdl:message[@name != substring-before(wsdl:part/@element, ':')]/@name
+      </Rule>
+      <Rule name="SoapAction" filter="starts-with(/wsdl:definitions/@targetNamespace, 'http://services.yodel.co.uk/')" severity="warning" type="xpathNodes" errorMessage="SOAP action not following the standard for an operation">
+        /wsdl:definitions/wsdl:binding/wsdl:operation[concat(/wsdl:definitions/@targetNamespace, '#', @name) != soap11:operation/@soapAction]/@name
+      </Rule>
+    </FileType>
+    <FileType suffix="OsbProxyService">
+      <Rule name="HttpToLocalPS" filter="count(/ser:proxyServiceEntry[ser:endpointConfig/tran:provider-id = 'http']) > 0" severity="warning" type="xpathBoolean" errorMessage="Non-local PS does not point to a local PS">
+        count(/ser:proxyServiceEntry[ends-with(ser:coreEntry/ser:invoke/@ref, 'LocalPS')]) > 0
+      </Rule>
+      <Rule name="HttpEndpoints" filter="count(/ser:proxyServiceEntry[ser:endpointConfig/tran:provider-id = 'http']) > 0" severity="warning" type="groovy">
+        //pattern is [yodel domain]/[service layer]/[major version]/[service name]
+        def errors = []
+        def endpointParts = evalStringXPath("/ser:proxyServiceEntry/ser:endpointConfig/tran:URI/env:value").split("/")
+        if (endpointParts.size() != 6) errors.add("URI is expected to have five parts")
+        if (!yodelDomains.contains(endpointParts[1])) errors.add("First element of the URI is not a valid Yodel business domain (e.g. ${yodelDomains}")
+        if (!serviceLayers.contains(endpointParts[2])) errors.add("Second element of the URI is not a valid Yodel service lager (e.g. ${serviceLayers})")
+        return errors
+      </Rule>
+    </FileType>
+  </FileTypes>
+</XmlRules>

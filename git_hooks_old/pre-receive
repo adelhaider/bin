@@ -1,0 +1,41 @@
+#!/bin/bash
+export CLASSPATH=groovylibs/saxon9he.jar:groovylibs/poi-3.13-20150929.jar:groovylibs/poi-ooxml-3.13-20150929.jar
+export CLASSPATH=$CLASSPATH:groovylibs/ooxml-schemas-1.0.jar:groovylibs/xmlbeans-2.3.0.jar:groovylibs/groovy-all-1.8.0.jar:.
+
+OLDIFS=$IFS
+IFS=$'\n'
+basedir=$PWD
+latest_rev=
+latest_ref=
+
+#$1 is the Git revision
+#$2 is the file path
+function file_exists_in_git {
+    git cat-file -e $1:$2
+    return $?
+}
+
+cd custom_hooks
+
+while read line
+do
+    oldrev=$(echo $line | cut -f1 -d" ")
+    newrev=$(echo $line | cut -f2 -d" ")
+    refname=$(echo $line | cut -f3 -d" ")
+
+    echo "Processing commit ${refname} :: ${oldrev} to ${newrev}"
+#    files=$(git diff $oldrev $newrev --name-only)
+#    files_array=($files)
+
+    case "$refname" in
+        refs/heads/dev)
+            echo "Push to DEV"
+            groovy preReceiveDev.groovy ${oldrev} ${newrev}
+            ;;
+        refs/heads/feature/*)
+            echo "Push to feature branch: ${refname}"
+            groovy pre-receive-feature.groovy ${oldrev} ${newrev}
+            ;;
+    esac
+done < ${1:-/dev/stdin}
+#done digesting the input from Git
